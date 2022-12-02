@@ -3,6 +3,9 @@ import network
 import random
 import socket
 from machine import Pin
+import arducam
+import gc
+
 led = Pin("LED", Pin.OUT)
 
 def main():
@@ -32,6 +35,9 @@ def main():
         status = wlan.ifconfig()
         print( 'ip = ' + status[0] )
 
+    cam = arducam.camera_class()
+    cam.init_camera()
+    
     rand_int = random.randint(0,4095)
     rand_len = len(str(rand_int))
     UPNP_MCAST_IP = "239.255.255.250"
@@ -79,11 +85,23 @@ def main():
         
         joystick_data = []
         #print("starting main controller loop")
+        gc.collect()
+        available = gc.mem_free()
+        print(available)
+        max_timeouts = 4
         while(connected):
+            print("starting frame")
+            cam.get_frame()
+            print("Got frame")
+            send_image_packet(new_ip, broadcast_port+rand_int, cam.hw_sm.image_array)
+            # test_packet = "pycontroller:"+str(rand_int)
+            # send_udp_packet(new_ip, broadcast_port+rand_int,test_packet)
+            print("sent_udp_image")
             ret_data = receive_udp_packet(new_ip, broadcast_port+rand_int, 1024)
             if(ret_data == None):
-                #print("udp read timeout")
-                connected = 0
+                max_timeouts = max_timeouts - 1
+                if(max_timeouts == 0):
+                    connected = 0
             else:
                 ret_ip = ret_data[1][0]
                 if(ret_ip == new_ip):
@@ -125,10 +143,17 @@ def receive_broadcast_packet(packet_port, packet_length):
     udp_rx_sock.close()
     return udp_packet_data
 
+def send_udp_packet(packet_ip, packet_port, packet_data):
+    udp_tx_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_tx_sock.bind(('',0))
+    udp_tx_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    udp_tx_sock.sendto(packet_data.encode(), (packet_ip, packet_port))
+    udp_tx_sock.close()
+
 def receive_udp_packet(packet_ip, packet_port, packet_length):
     global udp_rx_sock
     udp_rx_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    udp_rx_sock.settimeout(2)
+    udp_rx_sock.settimeout(1)
     udp_rx_sock.bind(('',packet_port))
     try:
         udp_packet_data = udp_rx_sock.recvfrom(packet_length)
@@ -137,9 +162,44 @@ def receive_udp_packet(packet_ip, packet_port, packet_length):
     udp_rx_sock.close()
     return udp_packet_data
 
-time.sleep(2)
-print("Starting Main in 5 seconds")
-led.on()
-time.sleep(5)
-led.off()
-main()
+def send_image_packet(packet_ip, packet_port, packet_data):
+    udp_tx_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_tx_sock.bind(('',0))
+    udp_tx_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    # udp_tx_sock.sendto(packet_data, (packet_ip, packet_port))
+    # y_res = 324
+    # x_res = 324
+    # y_counter = 0
+    # x_counter = 0
+    # while(y_counter < y_res):
+    #     print(y_counter)
+    #     image_line = []
+    #     image_line.append(y_counter & 0xff)
+    #     image_line.append((y_counter >> 8) & 0xff)
+    #     x_counter = 0
+    #     while(x_counter < x_res):
+    #         print(packet_data[x_res*y_counter+x_counter])
+    #         image_line.append(packet_data[x_res*y_counter+x_counter])
+    #         x_counter = x_counter + 1
+    #     y_counter = y_counter + 1
+    #     print("starting_send")
+    #     udp_tx_sock.sendto(bytes(image_line), (packet_ip, packet_port))
+    y_res = 324
+    x_res = 324
+    bytes_per_line_number = 4
+    y_counter = 0
+    index = 0
+    while(y_counter < y_res):
+        udp_tx_sock.sendto(packet_data[index:index+x_res+bytes_per_line_number], (packet_ip, packet_port))
+        index = index + x_res + bytes_per_line_number
+        y_counter = y_counter + 1
+    udp_tx_sock.close()
+
+if __name__ == "__main__":
+   main()
+   time.sleep(2)
+   print("Starting Main in 5 seconds")
+   led.on()
+   time.sleep(5)
+   led.off()
+   main()
