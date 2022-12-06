@@ -23,7 +23,7 @@ class camera_class:
    def init_camera(self):
       self.i2c.initiate_i2c(self.scl_pin,self.sda_pin,hm01b0.hm01b0_i2c_freq,hm01b0.hm01b0_i2c_address,hm01b0.hm01b0_reg_address_width)
       time.sleep(0.5)
-      self.i2c.list_reg_writes(hm01b0.hm01b0_regs_init_324x244, hm01b0.hm01b0_i2c_delay)
+      self.i2c.list_reg_writes(hm01b0.hm01b0_regs_init_324x324_serial, hm01b0.hm01b0_i2c_delay)
       self.hw_sm = hm01b0.cam_pio_class(self.vsync_pin, self.hsync_pin, 0, 125_000_000, self.data_pin)
 
    def get_frame(self):

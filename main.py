@@ -184,15 +184,19 @@ def send_image_packet(packet_ip, packet_port, packet_data):
     #     y_counter = y_counter + 1
     #     print("starting_send")
     #     udp_tx_sock.sendto(bytes(image_line), (packet_ip, packet_port))
+    # for x in range(10):
     y_res = 324
     x_res = 324
+    lines_per_packet = 4
     bytes_per_line_number = 4
     y_counter = 0
     index = 0
     while(y_counter < y_res):
-        udp_tx_sock.sendto(packet_data[index:index+x_res+bytes_per_line_number], (packet_ip, packet_port))
-        index = index + x_res + bytes_per_line_number
-        y_counter = y_counter + 1
+        start = index
+        end = index + lines_per_packet*(x_res+bytes_per_line_number)
+        udp_tx_sock.sendto(packet_data[start:end], (packet_ip, packet_port))
+        index = index + lines_per_packet*(x_res + bytes_per_line_number)
+        y_counter = y_counter + lines_per_packet
     udp_tx_sock.close()
 
 if __name__ == "__main__":
