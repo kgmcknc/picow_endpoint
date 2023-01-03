@@ -2,6 +2,7 @@ import time
 import network
 import random
 import socket
+import secret
 from machine import Pin
 import arducam
 import gc
@@ -10,8 +11,8 @@ led = Pin("LED", Pin.OUT)
 
 def main():
     print('starting wifi')
-    ssid = 'WilmotFiber'
-    password = 'daisy09!'
+    ssid = secret.SSID
+    password = secret.PASSWORD
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     wlan.connect(ssid, password)
